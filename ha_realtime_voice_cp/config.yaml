@@ -1,0 +1,49 @@
+# Home Assistant OS add-on: HA Realtime Voice control plane
+# Install ONLY as a local add-on (copy this folder to /addons/ha_realtime_voice_cp).
+# Do NOT add the monorepo as an Add-on store repository — Supervisor clones the
+# entire git tree and can lock up / crash HA OS on a large private monorepo.
+name: "HA Realtime Voice CP"
+version: "0.1.1"
+slug: ha_realtime_voice_cp
+description: "Mints short-lived xAI realtime tokens and bootstraps Voice PE sessions. Does not proxy audio."
+url: "https://github.com/colinmcintosh/ha-realtime-voice"
+arch:
+  - aarch64
+  - amd64
+  - armv7
+init: false
+startup: application
+boot: auto
+ingress: false
+host_network: false
+ports:
+  8787/tcp: 8787
+ports_description:
+  8787/tcp: "Control plane HTTP (PE session mint + /health)"
+watchdog: "http://[HOST]:[PORT:8787]/health"
+panel_icon: mdi:microphone-message
+webui: "http://[HOST]:[PORT:8787]/health"
+options:
+  xai_api_key: ""
+  device_tokens: "voice-pe-1:change-me-device-token"
+  ha_base_url: "http://homeassistant:8123"
+  ha_long_lived_token: ""
+  ha_refresh_token: ""
+  default_model: "grok-voice-latest"
+  default_voice: "eve"
+  default_sample_rate: 16000
+  xai_ephemeral_ttl_seconds: 300
+  log_level: info
+  default_instructions: ""
+schema:
+  xai_api_key: password
+  device_tokens: str
+  ha_base_url: str
+  ha_long_lived_token: password
+  ha_refresh_token: password
+  default_model: str
+  default_voice: str
+  default_sample_rate: int(8000,48000)
+  xai_ephemeral_ttl_seconds: int(60,3600)
+  log_level: list(debug|info|warning|error)
+  default_instructions: str
