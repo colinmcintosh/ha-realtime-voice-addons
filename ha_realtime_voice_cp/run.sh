@@ -25,8 +25,7 @@ json_int() {
 export XAI_API_KEY="$(json_str xai_api_key)"
 export DEVICE_TOKENS="$(json_str device_tokens)"
 export HA_BASE_URL="$(json_str ha_base_url)"
-export HA_LONG_LIVED_TOKEN="$(json_str ha_long_lived_token)"
-export HA_REFRESH_TOKEN="$(json_str ha_refresh_token)"
+export PUBLIC_BASE_URL="$(json_str public_base_url)"
 export DEFAULT_MODEL="$(json_str default_model)"
 export DEFAULT_VOICE="$(json_str default_voice)"
 export DEFAULT_SAMPLE_RATE="$(json_int default_sample_rate 16000)"
@@ -47,17 +46,15 @@ if [[ -z "${DEVICE_TOKENS}" ]]; then
   echo "ERROR: device_tokens is empty — need at least one device_id:token pair" >&2
   exit 2
 fi
-
-# Empty optional strings → unset so pydantic defaults apply where intended.
 if [[ -z "${HA_BASE_URL}" ]]; then
-  unset HA_BASE_URL
+  echo "ERROR: ha_base_url is empty" >&2
+  exit 2
 fi
-if [[ -z "${HA_LONG_LIVED_TOKEN}" ]]; then
-  unset HA_LONG_LIVED_TOKEN
+if [[ -z "${PUBLIC_BASE_URL}" ]]; then
+  echo "ERROR: public_base_url is empty — required for HA OAuth (client_id + redirect)" >&2
+  exit 2
 fi
-if [[ -z "${HA_REFRESH_TOKEN}" ]]; then
-  unset HA_REFRESH_TOKEN
-fi
+
 if [[ -z "${DEFAULT_INSTRUCTIONS}" ]]; then
   unset DEFAULT_INSTRUCTIONS
 fi
@@ -65,11 +62,16 @@ if [[ -z "${LOG_LEVEL}" ]]; then
   export LOG_LEVEL=info
 fi
 
+# OAuth client_id defaults to PUBLIC_BASE_URL inside the CP.
+export HA_OAUTH_CLIENT_ID="${PUBLIC_BASE_URL}"
+
 mkdir -p "${DATA_DIR}"
 
 echo "Starting HA Realtime Voice control plane on ${LISTEN_HOST}:${LISTEN_PORT}"
 echo "  data_dir=${DATA_DIR}"
-echo "  ha_base_url=${HA_BASE_URL:-<unset>}"
+echo "  ha_base_url=${HA_BASE_URL}"
+echo "  public_base_url=${PUBLIC_BASE_URL}"
 echo "  devices=$(echo "${DEVICE_TOKENS}" | awk -F',' '{print NF}')"
+echo "  HA credentials: OAuth pairing UI at ${PUBLIC_BASE_URL}/ (no token paste)"
 
 exec ha-realtime-voice-cp

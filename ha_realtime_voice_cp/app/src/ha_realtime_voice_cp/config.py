@@ -39,12 +39,11 @@ class Settings(BaseSettings):
     device_tokens_raw: str = Field(default="", alias="DEVICE_TOKENS")
 
     ha_base_url: str | None = Field(default=None, alias="HA_BASE_URL")
-    ha_refresh_token: str | None = Field(default=None, alias="HA_REFRESH_TOKEN")
-    ha_long_lived_token: str | None = Field(default=None, alias="HA_LONG_LIVED_TOKEN")
-    ha_oauth_client_id: str = Field(
-        default="https://ha-realtime-voice.local",
-        alias="HA_OAUTH_CLIENT_ID",
-    )
+    # Public URL of this control plane as browsers reach it (OAuth client_id + redirect).
+    # Example: http://homeassistant.local:8787 or http://192.168.1.10:8787
+    public_base_url: str | None = Field(default=None, alias="PUBLIC_BASE_URL")
+    # Override OAuth client_id (defaults to public_base_url). HA IndieAuth expects a URL.
+    ha_oauth_client_id: str | None = Field(default=None, alias="HA_OAUTH_CLIENT_ID")
 
     xai_ephemeral_ttl_seconds: int = Field(default=300, alias="XAI_EPHEMERAL_TTL_SECONDS")
     xai_client_secrets_url: str = Field(
@@ -84,7 +83,7 @@ class Settings(BaseSettings):
     )
     default_sample_rate: int = Field(default=16000, alias="DEFAULT_SAMPLE_RATE")
 
-    @field_validator("ha_base_url", mode="before")
+    @field_validator("ha_base_url", "public_base_url", "ha_oauth_client_id", mode="before")
     @classmethod
     def _empty_url_to_none(cls, value: object) -> object:
         if value == "":
@@ -100,6 +99,28 @@ class Settings(BaseSettings):
         if not self.ha_base_url:
             return None
         return self.ha_base_url.rstrip("/") + "/api/mcp"
+
+    @property
+    def effective_public_base_url(self) -> str | None:
+        if self.public_base_url:
+            return self.public_base_url.rstrip("/")
+        return None
+
+    @property
+    def effective_oauth_client_id(self) -> str:
+        if self.ha_oauth_client_id:
+            return self.ha_oauth_client_id.rstrip("/")
+        if self.public_base_url:
+            return self.public_base_url.rstrip("/")
+        # Last resort — HA requires a URL-shaped client_id.
+        return f"http://127.0.0.1:{self.listen_port}"
+
+    @property
+    def oauth_redirect_uri(self) -> str | None:
+        base = self.effective_public_base_url
+        if not base:
+            return None
+        return f"{base}/oauth/callback"
 
 
 @lru_cache

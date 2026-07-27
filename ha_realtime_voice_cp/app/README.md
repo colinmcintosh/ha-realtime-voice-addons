@@ -2,17 +2,36 @@
 
 Mints xAI ephemeral tokens and bootstraps PE sessions. Does **not** proxy audio.
 
+HA credentials come from **OAuth pairing** (Web UI), not pasted long-lived tokens.
+
 ```bash
 cp .env.example .env
+# set XAI_API_KEY, DEVICE_TOKENS, HA_BASE_URL, PUBLIC_BASE_URL
 uv sync
 uv run ha-realtime-voice-cp
 ```
 
+Open `PUBLIC_BASE_URL` (default `http://127.0.0.1:8787/`) → **Link Home Assistant**.
+
 ## API
+
+### `GET /`
+
+OAuth pairing UI (status + link / unlink).
 
 ### `GET /health`
 
-Liveness + basic config presence (no secrets).
+Liveness + config flags (`ha_oauth_linked`, no secrets).
+
+### `GET /oauth/start` → HA authorize
+
+### `GET /oauth/callback`
+
+Stores refresh token under `DATA_DIR/ha_tokens.json`.
+
+### `POST /oauth/unlink`
+
+Clears stored refresh token.
 
 ### `POST /v1/session/start`
 
@@ -32,31 +51,4 @@ Body (optional JSON):
 }
 ```
 
-Response:
-
-```json
-{
-  "session_id": "...",
-  "xai": {
-    "ephemeral_token": "...",
-    "expires_at": 1234567890,
-    "realtime_url": "wss://api.x.ai/v1/realtime?model=grok-voice-latest",
-    "model": "grok-voice-latest"
-  },
-  "ha": {
-    "base_url": "http://homeassistant.local:8123",
-    "mcp_url": "http://homeassistant.local:8123/api/mcp",
-    "access_token": "...",
-    "token_type": "Bearer"
-  },
-  "session": {
-    "voice": "eve",
-    "instructions": "...",
-    "tools_mode": "client_functions",
-    "audio": { "input_rate": 16000, "output_rate": 16000, "transport": "binary" },
-    "tools": [ ... function tool schemas ... ]
-  }
-}
-```
-
-If HA credentials are missing, `ha` is `null` and tools still include `end_conversation` only.
+Response includes short-lived `ha.access_token` when OAuth is linked. If not linked, `ha` is `null` and tools are limited to `end_conversation`.

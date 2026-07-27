@@ -26,7 +26,7 @@ class HaSessionInfo(BaseModel):
     mcp_url: str
     access_token: str
     token_type: str = "Bearer"
-    source: Literal["oauth_refresh", "long_lived", "none"] = "none"
+    source: Literal["oauth_refresh", "none"] = "none"
 
 
 class AudioBootstrap(BaseModel):
@@ -58,3 +58,5 @@ class HealthResponse(BaseModel):
     devices_configured: int
     ha_base_url_configured: bool
     ha_credentials_configured: bool
+    public_base_url_configured: bool = False
+    ha_oauth_linked: bool = False

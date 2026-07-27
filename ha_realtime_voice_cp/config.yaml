@@ -1,11 +1,10 @@
 # Home Assistant OS add-on: HA Realtime Voice control plane
-# Install ONLY as a local add-on (copy this folder to /addons/ha_realtime_voice_cp).
-# Do NOT add the monorepo as an Add-on store repository — Supervisor clones the
-# entire git tree and can lock up / crash HA OS on a large private monorepo.
+# Install via public add-on repo:
+#   https://github.com/colinmcintosh/ha-realtime-voice-addons
 name: "HA Realtime Voice CP"
-version: "0.1.2"
+version: "0.2.0"
 slug: ha_realtime_voice_cp
-description: "Mints short-lived xAI realtime tokens and bootstraps Voice PE sessions. Does not proxy audio."
+description: "Mints short-lived xAI realtime tokens and bootstraps Voice PE sessions. Links HA via OAuth (no long-lived token paste). Does not proxy audio."
 url: "https://github.com/colinmcintosh/ha-realtime-voice"
 arch:
   - aarch64
@@ -19,22 +18,23 @@ host_network: false
 ports:
   8787/tcp: 8787
 ports_description:
-  8787/tcp: "Control plane HTTP (PE session mint + /health)"
+  8787/tcp: "Control plane HTTP + OAuth pairing UI (PE mint + /health)"
 watchdog: "http://[HOST]:[PORT:8787]/health"
 panel_icon: mdi:microphone-message
-webui: "http://[HOST]:[PORT:8787]/health"
+webui: "http://[HOST]:[PORT:8787]/"
 options:
   xai_api_key: ""
   device_tokens: "voice-pe-1:change-me-device-token"
+  # HA Core as seen from this add-on (HA OS default works).
   ha_base_url: "http://homeassistant:8123"
-  ha_long_lived_token: ""
-  ha_refresh_token: ""
+  # URL browsers use to reach this add-on (OAuth client_id + redirect base).
+  # Example: http://homeassistant.local:8787 or http://192.168.1.10:8787
+  public_base_url: "http://homeassistant.local:8787"
   default_model: "grok-voice-latest"
   default_voice: "eve"
   default_sample_rate: 16000
   xai_ephemeral_ttl_seconds: 300
   log_level: info
-  # Leave as-is unless you want to override the assistant's system prompt.
   default_instructions: >-
     You are a concise home voice assistant for Home Assistant.
     Prefer short spoken answers.
@@ -54,8 +54,7 @@ schema:
   xai_api_key: password
   device_tokens: str
   ha_base_url: str
-  ha_long_lived_token: password
-  ha_refresh_token: password
+  public_base_url: str
   default_model: str
   default_voice: str
   default_sample_rate: int(8000,48000)
