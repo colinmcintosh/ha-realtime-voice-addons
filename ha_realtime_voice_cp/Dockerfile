@@ -4,6 +4,13 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.12-alpine3.21
 FROM ${BUILD_FROM}
 
+# Supervisor passes the add-on version from config.yaml as a build arg. Bake it
+# in so the pairing UI can report the version the user actually installed. The
+# Python package version is a different number that drifts -- the UI showed
+# v0.2.0 while the add-on was 0.4.0, which reads as a failed update.
+ARG BUILD_VERSION=""
+ENV HA_RV_ADDON_VERSION=${BUILD_VERSION}
+
 ENV LANG=C.UTF-8 \
     LISTEN_HOST=0.0.0.0 \
     LISTEN_PORT=8787 \

@@ -22,7 +22,7 @@ def _ago(epoch: int) -> str:
 
 def _device_rows(devices: list[dict[str, Any]], csrf_token: str) -> str:
     if not devices:
-        return "<p class='hint'>No devices yet. Enrol one below.</p>"
+        return "<p class='hint'>No devices yet. Enroll one below.</p>"
     rows = []
     for device in devices:
         device_id = escape(str(device["device_id"]))
@@ -204,10 +204,19 @@ def render_pairing_page(
     h1 {{ font-size: 1.25rem; margin: 0 0 .35rem; }}
     h2 {{ font-size: 1rem; margin: 0 0 .75rem; }}
     .sub {{ color: var(--muted); margin: 0 0 1rem; font-size: .92rem; }}
-    .row {{ display: flex; justify-content: space-between; gap: 1rem; padding: .35rem 0;
+    .row {{ display: flex; justify-content: space-between; align-items: baseline;
+           gap: 1rem; padding: .35rem 0;
            border-top: 1px solid #2a3648; font-size: .95rem; }}
     .row:first-of-type {{ border-top: 0; }}
-    .k {{ color: var(--muted); }}
+    /* Labels must never wrap. A flex item defaults to min-width:auto and
+       shrink:1, so an unbreakable value — the ingress URL is one long
+       token — pushed the label narrow enough to break "Public CP URL"
+       across three lines. */
+    .k {{ color: var(--muted); flex: 0 0 auto; }}
+    /* The value takes the slack and breaks mid-token when it has to;
+       min-width:0 is what actually permits a flex item to shrink below
+       its content width. */
+    .row > :last-child {{ min-width: 0; text-align: right; overflow-wrap: anywhere; }}
     .num {{ font-variant-numeric: tabular-nums; }}
     .muted {{ color: var(--muted); }}
     .ok {{ color: var(--ok); font-weight: 600; }}
@@ -269,7 +278,7 @@ def render_pairing_page(
         <input type="text" name="device_id" placeholder="voice-pe-1" required
                pattern="[A-Za-z0-9._-]{{1,64}}"/>
         <input type="text" name="label" placeholder="Kitchen (optional)"/>
-        <button type="submit" class="btn">Enrol device</button>
+        <button type="submit" class="btn">Enroll device</button>
       </form>
       <p class="hint">Enrolling mints a token and shows it once. Re-enrolling an existing
       device_id rotates its token; the old one stops working immediately.

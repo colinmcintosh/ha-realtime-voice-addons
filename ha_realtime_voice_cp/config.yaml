@@ -2,7 +2,7 @@
 # Install via public add-on repo:
 #   https://github.com/colinmcintosh/ha-realtime-voice-addons
 name: "HA Realtime Voice CP"
-version: "0.4.0"
+version: "0.4.1"
 slug: ha_realtime_voice_cp
 description: "Mints short-lived xAI realtime tokens and bootstraps Voice PE sessions. Links HA via OAuth (no long-lived token paste). Does not proxy audio."
 url: "https://github.com/colinmcintosh/ha-realtime-voice"
@@ -24,7 +24,7 @@ image: "ghcr.io/colinmcintosh/ha-realtime-voice-cp-{arch}"
 init: false
 startup: application
 boot: auto
-# S-3: the human-facing UI (OAuth link/unlink, device enrolment, revocation)
+# S-3: the human-facing UI (OAuth link/unlink, device enrollment, revocation)
 # is served through Supervisor ingress, so Home Assistant authenticates the user
 # before the request arrives. The published port stays — a Voice PE cannot log
 # in to Home Assistant — but with `ui_access: ingress` it carries only

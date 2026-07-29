@@ -20,7 +20,7 @@ def main() -> None:
         # stores only a hash of the token it mints. Refusing to start here would
         # mean there was no way to reach the UI that hands out the first one.
         logger.info(
-            "DEVICE_TOKENS is empty; enrol devices from the pairing UI "
+            "DEVICE_TOKENS is empty; enroll devices from the pairing UI "
             "(configured tokens remain supported)"
         )
 

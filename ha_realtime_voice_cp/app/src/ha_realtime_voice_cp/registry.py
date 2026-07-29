@@ -1,4 +1,4 @@
-"""Device registry: enrol several Voice PEs, revoke one without touching the rest.
+"""Device registry: enroll several Voice PEs, revoke one without touching the rest.
 
 Before this, devices existed only as a `DEVICE_TOKENS` env string. That works
 for one device but has no revoke story — pulling a compromised device's access
@@ -98,7 +98,7 @@ class DeviceRegistry:
         tmp.replace(self.path)
         os.chmod(self.path, 0o600)
 
-    # --- enrolment -------------------------------------------------------
+    # --- enrollment -------------------------------------------------------
 
     def enroll(self, device_id: str, label: str = "") -> str:
         """Create (or re-key) a device. Returns the token — shown once, never stored."""

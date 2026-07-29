@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import time
 from contextlib import asynccontextmanager
 
@@ -36,6 +37,12 @@ from .tools import area_instructions, default_client_function_tools
 from .xai_tokens import XaiTokenError, mint_ephemeral_token
 
 logger = logging.getLogger(__name__)
+
+# The version to show a user. Supervisor bakes the add-on version from
+# config.yaml into the image (see the add-on Dockerfile); the Python package
+# version is a separate number and they drift. Outside the add-on there is no
+# such env var, so the package version stands in.
+DISPLAY_VERSION = os.environ.get("HA_RV_ADDON_VERSION") or __version__
 
 # Supervisor sets this on every request it proxies through ingress. Its presence
 # is what distinguishes "Home Assistant authenticated this user" from "some host
@@ -81,7 +88,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(
         title="HA Realtime Voice Control Plane",
-        version=__version__,
+        version=DISPLAY_VERSION,
         lifespan=lifespan,
     )
     app.state.settings = settings
@@ -157,7 +164,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
         With `ui_access: ingress` the published port serves device-authenticated
         endpoints and `/health` only. Everything that can change state — OAuth
-        link/unlink, device enrolment, revocation — is reachable exclusively
+        link/unlink, device enrollment, revocation — is reachable exclusively
         through Supervisor ingress, which means Home Assistant has already
         authenticated the human on the other end. That is the remainder of S-3:
         CSRF tokens stopped a hostile page driving these endpoints, but nothing
@@ -211,7 +218,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         store: TokenStore = request.app.state.token_store
         device_registry: DeviceRegistry = request.app.state.registry
         html = render_pairing_page(
-            version=__version__,
+            version=DISPLAY_VERSION,
             csrf_token=store.issue_form_token(),
             ha_base_url=settings_dep.ha_base_url,
             public_base_url=public_base(request),
@@ -245,7 +252,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # many devices were enrolled and whether HA was linked — a precise
         # target-selection oracle for a scanner. Diagnostics moved to
         # /v1/diagnostics behind device auth.
-        return HealthResponse(ok=True, version=__version__)
+        return HealthResponse(ok=True, version=DISPLAY_VERSION)
 
     @app.get("/v1/diagnostics", response_model=DiagnosticsResponse)
     async def diagnostics(
@@ -256,7 +263,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         ha_service: HaAuthService = request.app.state.ha_auth
         return DiagnosticsResponse(
             ok=True,
-            version=__version__,
+            version=DISPLAY_VERSION,
             device_id=device_id,
             xai_configured=bool(settings_dep.xai_api_key),
             devices_configured=len(settings_dep.device_tokens),
@@ -277,7 +284,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         a: AuditLog = request.app.state.audit
         return MetricsResponse(
             ok=True,
-            version=__version__,
+            version=DISPLAY_VERSION,
             metrics=m.snapshot(),
             active_sessions=m.active_sessions(),
             tool_totals=a.tool_totals(),

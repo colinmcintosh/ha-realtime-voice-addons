@@ -27,7 +27,7 @@ in a browser returns **404**, and that is correct.
 | Option | Purpose |
 |--------|---------|
 | **xai_api_key** | xAI API key (stays on the HA host, never on the PE) |
-| **device_tokens** | Optional. `device_id:token` pairs for devices configured by hand. Normally left **empty** — enrol devices from the UI instead |
+| **device_tokens** | Optional. `device_id:token` pairs for devices configured by hand. Normally left **empty** — enroll devices from the UI instead |
 | **ha_base_url** | HA Core as seen from the add-on. `http://homeassistant:8123` on HA OS |
 | **ui_access** | `ingress` (recommended), `lan`, or `both`. See below |
 | **public_base_url** | Only needed for `lan` / `both`. Ingress derives it from the request |
@@ -53,8 +53,8 @@ There are **no** long-lived or refresh token paste fields. Link HA from the UI.
 2. **Link Home Assistant** — log in and approve. A refresh token is stored at
    `/data/ha_tokens.json` with `0600` permissions. Devices receive short-lived
    access tokens at session start.
-3. **Enrol your device** under *Devices*: enter an id such as `voice-pe-1` and
-   press **Enrol device**. The token is shown **once** — only its SHA-256 is
+3. **Enroll your device** under *Devices*: enter an id such as `voice-pe-1` and
+   press **Enroll device**. The token is shown **once** — only its SHA-256 is
    stored. Copy it into the PE's `secrets.yaml` now.
 
 ```yaml
@@ -130,7 +130,7 @@ under `/data`, and it never leaves your network.
 `ui_access` — a refresh token is bound to the `client_id` it was granted to.
 
 **A device gets a yellow ring.** The add-on answered and refused it: the token
-is wrong or the device was revoked. Re-enrol it.
+is wrong or the device was revoked. Re-enroll it.
 
 **A device gets an orange ring.** The add-on was never reached. Check that it
 is running and that the PE's `ha_rv_control_plane_url` points at this host's IP.
