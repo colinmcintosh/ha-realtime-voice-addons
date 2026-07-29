@@ -205,6 +205,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 return f"{scheme}://{host}{path}"
         return get_app_settings(request).effective_public_base_url
 
+    def ha_browser_base(request: Request) -> str | None:
+        """Origin to send the *browser* to for Home Assistant's authorize page.
+
+        Behind ingress the browser is already on the Home Assistant origin, so
+        reuse it and keep the whole OAuth flow on one host. `ha_base_url` is the
+        add-on's server-to-server address and is often an internal name; sending
+        a browser there is a cross-origin hop through whatever proxy fronts it,
+        and a redirect that drops the query string surfaces as HA's frontend
+        error "Invalid redirect URI".
+        """
+        path = ingress_path(request)
+        if path is not None:
+            host = request.headers.get("host")
+            if host:
+                scheme = request.headers.get("x-forwarded-proto") or request.url.scheme
+                return f"{scheme}://{host}"
+        return get_app_settings(request).ha_base_url
+
     def _pairing_html(
         request: Request,
         *,
@@ -435,7 +453,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         state = store.begin_oauth_state(redirect_uri=redirect_uri, client_id=client_id)
         try:
             url = ha_service.authorize_url(
-                redirect_uri=redirect_uri, state=state, client_id=client_id
+                redirect_uri=redirect_uri,
+                state=state,
+                client_id=client_id,
+                browser_base=ha_browser_base(request),
             )
         except HaAuthError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc

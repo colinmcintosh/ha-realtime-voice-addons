@@ -175,9 +175,37 @@ class HaAuthService:
         return self.store.has_refresh_token()
 
     def authorize_url(
-        self, *, redirect_uri: str, state: str, client_id: str | None = None
+        self,
+        *,
+        redirect_uri: str,
+        state: str,
+        client_id: str | None = None,
+        browser_base: str | None = None,
     ) -> str:
-        if not self.settings.ha_base_url:
+        """Build the URL the *browser* is sent to in order to approve access.
+
+        `browser_base` matters, and is not the same thing as `ha_base_url`.
+
+        `ha_base_url` is how this add-on reaches Home Assistant server to
+        server — on HA OS that is typically an internal name like
+        `http://homeassistant:8123`, and it is the right value for the token
+        endpoint. It is the *wrong* value to send a browser to: the user is
+        already on whatever public origin they reached Home Assistant by, and
+        bouncing them to an internal name is a cross-origin hop through
+        whatever proxy or redirect sits in front of it.
+
+        That hop is how "Invalid redirect URI" appears. Home Assistant's
+        frontend raises that message when the `redirect_uri` query parameter is
+        *absent or unparseable* — not when it is disallowed — so a redirect
+        that drops the query string produces exactly this error while the URL
+        we generated was perfectly valid. (IndieAuth's own check compares
+        scheme and netloc of client_id against redirect_uri, which ours match.)
+
+        Behind ingress the caller passes the origin the browser is already on,
+        so the whole flow stays on one host.
+        """
+        base = browser_base or self.settings.ha_base_url
+        if not base:
             raise HaAuthError("HA_BASE_URL is not configured")
         # HA's IndieAuth requires redirect_uri to sit under client_id's origin.
         # Behind Supervisor ingress the redirect is on the Home Assistant host,
@@ -190,7 +218,7 @@ class HaAuthService:
             "redirect_uri": redirect_uri,
             "state": state,
         }
-        return f"{self.settings.ha_base_url.rstrip('/')}/auth/authorize?{urlencode(params)}"
+        return f"{base.rstrip('/')}/auth/authorize?{urlencode(params)}"
 
     async def exchange_code(
         self,
