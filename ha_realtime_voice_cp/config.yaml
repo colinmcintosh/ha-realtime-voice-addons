@@ -2,7 +2,7 @@
 # Install via public add-on repo:
 #   https://github.com/colinmcintosh/ha-realtime-voice-addons
 name: "HA Realtime Voice CP"
-version: "0.4.2"
+version: "0.4.3"
 slug: ha_realtime_voice_cp
 description: "Mints short-lived xAI realtime tokens and bootstraps Voice PE sessions. Links HA via OAuth (no long-lived token paste). Does not proxy audio."
 url: "https://github.com/colinmcintosh/ha-realtime-voice"

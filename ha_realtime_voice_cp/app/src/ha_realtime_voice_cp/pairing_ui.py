@@ -98,6 +98,7 @@ def render_pairing_page(
     *,
     version: str,
     csrf_token: str,
+    home_url: str | None = None,
     ha_base_url: str | None,
     public_base_url: str | None,
     linked: bool,
@@ -118,6 +119,12 @@ def render_pairing_page(
     status = "Linked" if linked else "Not linked"
     status_class = "ok" if linked else "warn"
     msg_html = f'<p class="msg">{escape(message)}</p>' if message else ""
+    if message and home_url:
+        # The OAuth flow runs top-level, so a success lands here outside the
+        # Home Assistant panel. Without this the user is stranded on a bare page.
+        msg_html += (
+            f'<p><a class="btn" href="{escape(home_url)}">← Back to Home Assistant</a></p>'
+        )
     err_html = f'<p class="err">{escape(error)}</p>' if error else ""
 
     token_html = ""
@@ -164,14 +171,22 @@ def render_pairing_page(
         will stop until you link again.</p>
         """
     else:
+        # target="_top" breaks out of the ingress iframe. OAuth inside a frame
+        # is fragile — a protection layer in front of Home Assistant that bounces
+        # the framed request through its IdP returns to /auth/authorize without
+        # the query string, and HA's frontend then reports "Invalid redirect URI"
+        # because redirect_uri is missing. Confirmed on a real install: the exact
+        # same URL works when opened top-level and fails inside the panel.
+        # Running the flow in the top window is also just standard practice.
         link_block = f"""
-        <form method="post" action="oauth/start">
+        <form method="post" action="oauth/start" target="_top">
           <input type="hidden" name="csrf_token" value="{escape(csrf_token)}"/>
           <button type="submit" class="btn">Link Home Assistant</button>
         </form>
-        <p class="hint">Opens Home Assistant login. After you approve, a refresh token is
-        stored on this add-on. Devices receive short-lived access tokens at session start —
-        no long-lived token is pasted into configuration.</p>
+        <p class="hint">Opens Home Assistant login in this tab, leaving the add-on panel.
+        After you approve, a refresh token is stored on this add-on and you can return.
+        Devices receive short-lived access tokens at session start — no long-lived token
+        is pasted into configuration.</p>
         """
 
     return f"""<!doctype html>

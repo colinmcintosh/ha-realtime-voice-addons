@@ -238,6 +238,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         html = render_pairing_page(
             version=DISPLAY_VERSION,
             csrf_token=store.issue_form_token(),
+            # Where "back to Home Assistant" should point after the top-level
+            # OAuth flow drops the user outside the panel.
+            home_url=ha_browser_base(request),
             ha_base_url=settings_dep.ha_base_url,
             public_base_url=public_base(request),
             linked=ha_service.credentials_configured(),

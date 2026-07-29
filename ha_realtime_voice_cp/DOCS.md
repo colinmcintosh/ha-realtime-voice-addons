@@ -125,9 +125,18 @@ under `/data`, and it never leaves your network.
 **The Web UI shows 404 on port 8787.** Working as intended with
 `ui_access: ingress`. Open the add-on from the sidebar.
 
-**Link Home Assistant fails.** Set `ui_access: lan` and `public_base_url` to
-`http://<ha-host>:8787`, then link from that URL. Re-link after changing
-`ui_access` — a refresh token is bound to the `client_id` it was granted to.
+**Link Home Assistant fails with "Invalid redirect URI".** That message comes
+from Home Assistant's frontend and means the `redirect_uri` parameter did not
+arrive — not that it was rejected. Since 0.4.3 the Link button navigates the top
+window rather than the add-on's iframe, which fixes it: a protection layer in
+front of Home Assistant (Cloudflare Access, Authelia and similar) can bounce the
+framed request through its login and return without the query string. If you are
+on an older version, update. Failing that, set `ui_access: lan` and
+`public_base_url` to `http://<ha-lan-ip>:8787` and link from that URL directly.
+
+Re-link after changing `ui_access`, though a link made under one setting keeps
+working under another — the grant records the `client_id` it was issued to and
+replays it on refresh.
 
 **A device gets a yellow ring.** The add-on answered and refused it: the token
 is wrong or the device was revoked. Re-enroll it.

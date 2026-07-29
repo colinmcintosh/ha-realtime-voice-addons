@@ -1,6 +1,6 @@
 [project]
 name = "ha-realtime-voice-cp"
-version = "0.4.2"
+version = "0.4.3"
 description = "Control plane for HA Realtime Voice: xAI ephemeral mint, session bootstrap, HA OAuth tokens"
 readme = "README.md"
 requires-python = ">=3.11"
