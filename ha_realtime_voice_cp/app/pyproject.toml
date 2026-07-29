@@ -1,6 +1,6 @@
 [project]
 name = "ha-realtime-voice-cp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Control plane for HA Realtime Voice: xAI ephemeral mint, session bootstrap, HA OAuth tokens"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -11,6 +11,8 @@ dependencies = [
   "pydantic>=2.8.0",
   "pydantic-settings>=2.4.0",
   "python-dotenv>=1.0.0",
+  # Required by FastAPI Form(...) — the pairing UI posts a CSRF token.
+  "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]

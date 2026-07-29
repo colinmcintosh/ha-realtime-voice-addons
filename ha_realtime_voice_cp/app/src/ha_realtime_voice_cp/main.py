@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import sys
 
 import uvicorn
 
@@ -15,9 +14,15 @@ def main() -> None:
         level=getattr(logging, settings.log_level.upper(), logging.INFO),
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    logger = logging.getLogger(__name__)
     if not settings.device_tokens:
-        logging.error("DEVICE_TOKENS is empty; configure at least one device_id:token pair")
-        sys.exit(2)
+        # Not fatal: devices are normally enrolled from the pairing UI, which
+        # stores only a hash of the token it mints. Refusing to start here would
+        # mean there was no way to reach the UI that hands out the first one.
+        logger.info(
+            "DEVICE_TOKENS is empty; enrol devices from the pairing UI "
+            "(configured tokens remain supported)"
+        )
 
     app = create_app(settings)
     uvicorn.run(

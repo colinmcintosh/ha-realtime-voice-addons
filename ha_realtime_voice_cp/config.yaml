@@ -2,7 +2,7 @@
 # Install via public add-on repo:
 #   https://github.com/colinmcintosh/ha-realtime-voice-addons
 name: "HA Realtime Voice CP"
-version: "0.2.0"
+version: "0.3.0"
 slug: ha_realtime_voice_cp
 description: "Mints short-lived xAI realtime tokens and bootstraps Voice PE sessions. Links HA via OAuth (no long-lived token paste). Does not proxy audio."
 url: "https://github.com/colinmcintosh/ha-realtime-voice"
@@ -13,23 +13,54 @@ arch:
 init: false
 startup: application
 boot: auto
-ingress: false
+# S-3: the human-facing UI (OAuth link/unlink, device enrolment, revocation)
+# is served through Supervisor ingress, so Home Assistant authenticates the user
+# before the request arrives. The published port stays — a Voice PE cannot log
+# in to Home Assistant — but with `ui_access: ingress` it carries only
+# device-authenticated endpoints plus /health.
+ingress: true
+ingress_port: 8787
 host_network: false
 ports:
   8787/tcp: 8787
 ports_description:
-  8787/tcp: "Control plane HTTP + OAuth pairing UI (PE mint + /health)"
+  8787/tcp: "Device API for Voice PE (session mint + telemetry). The pairing UI is on ingress."
 watchdog: "http://[HOST]:[PORT:8787]/health"
 panel_icon: mdi:microphone-message
-webui: "http://[HOST]:[PORT:8787]/"
+panel_title: "Voice CP"
 options:
   xai_api_key: ""
-  device_tokens: "voice-pe-1:change-me-device-token"
+  # Must be set per install. Generate with:
+  #   python3 -c 'import secrets; print("voice-pe-1:" + secrets.token_urlsafe(32))'
+  # A device token mints a live HA access token and a live xAI ephemeral token,
+  # so a shared or guessable value is full home control for anyone on the LAN.
+  device_tokens: ""
   # HA Core as seen from this add-on (HA OS default works).
   ha_base_url: "http://homeassistant:8123"
-  # URL browsers use to reach this add-on (OAuth client_id + redirect base).
-  # Example: http://homeassistant.local:8787 or http://192.168.1.10:8787
-  public_base_url: "http://homeassistant.local:8787"
+  # Only needed when ui_access is "lan" or "both". Opening the UI through
+  # ingress derives the OAuth client_id and redirect from the request itself.
+  public_base_url: ""
+  # Where the pairing UI may be reached from:
+  #   ingress - through Home Assistant only (recommended; closes S-3)
+  #   lan     - on port 8787 only (standalone Docker without Supervisor)
+  #   both    - transitional; any LAN host can open the UI
+  ui_access: "ingress"
+  # Home Assistant services the voice model may call, as comma-separated
+  # domain.service patterns (domain.* is allowed). Empty = built-in allowlist
+  # covering ordinary home control. Anything not listed is refused on the
+  # device. A hard-deny list (shell_command, python_script, hassio, backup, …)
+  # always applies and cannot be widened here.
+  service_allow: ""
+  service_deny: ""
+  # Services that need spoken confirmation. Empty string disables the gate;
+  # leave unset for the default (locks, alarm panels, cover.open_cover).
+  service_confirm: "lock.unlock,lock.open,alarm_control_panel.alarm_disarm,alarm_control_panel.alarm_arm_away,alarm_control_panel.alarm_arm_home,cover.open_cover"
+  # Optional spoken PIN required alongside confirmation. Digits only, "" = off.
+  confirm_pin: ""
+  # Which room each device is in, as device_id:Area pairs. Lets "turn on the
+  # lights" mean this room instead of prompting for one every time.
+  # Example: voice-pe-1:Kitchen,voice-pe-2:Bedroom
+  device_areas: ""
   default_model: "grok-voice-latest"
   default_voice: "eve"
   default_sample_rate: 16000
@@ -54,7 +85,13 @@ schema:
   xai_api_key: password
   device_tokens: str
   ha_base_url: str
-  public_base_url: str
+  public_base_url: str?
+  ui_access: list(ingress|lan|both)
+  service_allow: str?
+  service_deny: str?
+  service_confirm: str?
+  confirm_pin: str?
+  device_areas: str?
   default_model: str
   default_voice: str
   default_sample_rate: int(8000,48000)

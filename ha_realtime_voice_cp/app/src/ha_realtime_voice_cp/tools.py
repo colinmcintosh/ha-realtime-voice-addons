@@ -145,8 +145,57 @@ def ha_get_state_tool() -> dict[str, Any]:
     }
 
 
-def default_client_function_tools(*, include_ha: bool) -> list[dict[str, Any]]:
+def device_timer_tool() -> dict[str, Any]:
+    return {
+        "type": "function",
+        "name": "device_timer",
+        "description": (
+            "Set, cancel or check kitchen-style timers that run on the voice "
+            "device itself. Use this for 'set a timer for 10 minutes', "
+            "'cancel the pasta timer', 'how long is left'. "
+            "These timers ring on the device and keep running even if Home "
+            "Assistant is unavailable, so prefer them over Home Assistant "
+            "timer entities for spoken timers. At most 4 at once."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["start", "cancel", "query"],
+                    "description": (
+                        "start a new timer, cancel an existing one, or query "
+                        "what is running. Defaults to query."
+                    ),
+                },
+                "name": {
+                    "type": "string",
+                    "description": (
+                        "Short label the user used, e.g. 'pasta', 'laundry'. "
+                        "For cancel, matches an existing timer by name; leave "
+                        "empty to cancel a ringing timer, or the next one due."
+                    ),
+                },
+                # Three units rather than one: models are unreliable at
+                # arithmetic, and "an hour and a half" turning into 90 seconds
+                # is a bad failure for a timer. They are summed.
+                "seconds": {"type": "integer", "description": "Seconds part of the duration."},
+                "minutes": {"type": "integer", "description": "Minutes part of the duration."},
+                "hours": {"type": "integer", "description": "Hours part of the duration."},
+            },
+            "required": ["action"],
+        },
+    }
+
+
+def default_client_function_tools(
+    *, include_ha: bool, include_timers: bool = True
+) -> list[dict[str, Any]]:
     tools = [end_conversation_tool()]
+    if include_timers:
+        # Not gated on Home Assistant: device timers work with no HA at all,
+        # which is the point of running them on the edge.
+        tools.append(device_timer_tool())
     if include_ha:
         tools.extend(
             [
@@ -157,3 +206,21 @@ def default_client_function_tools(*, include_ha: bool) -> list[dict[str, Any]]:
             ]
         )
     return tools
+
+
+def area_instructions(area: str) -> str:
+    """Tell the model which room it is standing in (H7).
+
+    A bare "turn on the lights" is ambiguous in any house with more than one
+    room, and the model cannot resolve it from the request alone — it has no
+    idea where the device is. With this it can search that area first and only
+    ask when the answer is genuinely elsewhere.
+    """
+    if not area:
+        return ""
+    return (
+        f" This device is located in the {area}. When the user does not name a "
+        f"room, prefer entities in the {area} — pass area='{area}' to "
+        "ha_search_entities first. If nothing matches there, widen the search "
+        "and say which room you acted on."
+    )

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import secrets
 import time
 from dataclasses import dataclass
@@ -49,7 +50,39 @@ class TokenStore:
     def _write(self, data: dict[str, Any]) -> None:
         tmp = self.path.with_suffix(".tmp")
         tmp.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        # This file holds a Home Assistant refresh token with the pairing user's
+        # full privileges. Default umask leaves it world-readable (S-5).
+        os.chmod(tmp, 0o600)
         tmp.replace(self.path)
+        os.chmod(self.path, 0o600)
+
+    # --- Form CSRF -------------------------------------------------------
+    # The pairing UI has no session cookie, so SameSite offers nothing and a
+    # plain cross-origin form can drive any state-changing endpoint. A token
+    # bound to the store closes that.
+
+    def issue_form_token(self) -> str:
+        data = self._read()
+        existing = data.get("form_csrf") or {}
+        created = int(existing.get("created_at") or 0)
+        # Reuse a live token so concurrently rendered pages stay valid.
+        if existing.get("token") and created and (time.time() - created) <= 3600:
+            return str(existing["token"])
+        token = secrets.token_urlsafe(24)
+        data["form_csrf"] = {"token": token, "created_at": int(time.time())}
+        self._write(data)
+        return token
+
+    def verify_form_token(self, token: str | None) -> bool:
+        data = self._read()
+        entry = data.get("form_csrf") or {}
+        expected = entry.get("token")
+        created = int(entry.get("created_at") or 0)
+        if not expected or not token:
+            return False
+        if not secrets.compare_digest(str(expected), token):
+            return False
+        return not created or (time.time() - created) <= 3600
 
     def has_refresh_token(self) -> bool:
         data = self._read()
@@ -70,13 +103,26 @@ class TokenStore:
             return str(shared["refresh_token"])
         return None
 
-    def set_shared_refresh_token(self, refresh_token: str) -> None:
+    def set_shared_refresh_token(self, refresh_token: str, client_id: str = "") -> None:
         data = self._read()
         data["shared"] = {
             "refresh_token": refresh_token,
+            "client_id": client_id,
             "updated_at": int(time.time()),
         }
         self._write(data)
+
+    def get_client_id(self) -> str | None:
+        """client_id the refresh token was issued to.
+
+        Home Assistant binds a refresh token to its client_id and rejects a
+        refresh that presents a different one. Behind Supervisor ingress the
+        client_id contains a per-session ingress path, so recomputing it at
+        refresh time would break every link a few hours after pairing. Replay
+        the stored value instead.
+        """
+        client_id = self._read().get("shared", {}).get("client_id")
+        return str(client_id) if client_id else None
 
     def clear_shared_refresh_token(self) -> None:
         data = self._read()
@@ -128,10 +174,16 @@ class HaAuthService:
     def credentials_configured(self) -> bool:
         return self.store.has_refresh_token()
 
-    def authorize_url(self, *, redirect_uri: str, state: str) -> str:
+    def authorize_url(
+        self, *, redirect_uri: str, state: str, client_id: str | None = None
+    ) -> str:
         if not self.settings.ha_base_url:
             raise HaAuthError("HA_BASE_URL is not configured")
-        client_id = self.settings.effective_oauth_client_id
+        # HA's IndieAuth requires redirect_uri to sit under client_id's origin.
+        # Behind Supervisor ingress the redirect is on the Home Assistant host,
+        # so the configured PUBLIC_BASE_URL is the wrong client_id and HA would
+        # refuse the authorization.
+        client_id = client_id or self.settings.effective_oauth_client_id
         params = {
             "response_type": "code",
             "client_id": client_id,
@@ -174,7 +226,7 @@ class HaAuthService:
         refresh = data.get("refresh_token")
         if not refresh:
             raise HaAuthError(f"missing refresh_token in response: {list(data.keys())}")
-        self.store.set_shared_refresh_token(str(refresh))
+        self.store.set_shared_refresh_token(str(refresh), client_id)
         self._cache.clear()
         # Cache access token from the same response when present.
         access = data.get("access_token")
@@ -227,7 +279,12 @@ class HaAuthService:
                 data={
                     "grant_type": "refresh_token",
                     "refresh_token": refresh_token,
-                    "client_id": self.settings.effective_oauth_client_id,
+                    # Must be the client_id the token was granted to, not
+                    # whatever the current configuration computes.
+                    "client_id": (
+                        self.store.get_client_id()
+                        or self.settings.effective_oauth_client_id
+                    ),
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
                 timeout=15.0,
