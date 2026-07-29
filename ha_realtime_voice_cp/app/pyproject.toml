@@ -6,7 +6,15 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115.0",
-  "uvicorn[standard]>=0.32.0",
+  # NOT uvicorn[standard]. That extra pulls uvloop, httptools, watchfiles and
+  # websockets — three of them compiled extensions — none of which this service
+  # uses: it serves plain HTTP and handles a handful of requests per voice
+  # session. On a Home Assistant add-on those extras are compiled or fetched
+  # during a docker build that runs on the user's HA box. Measured on HA Blue
+  # (ODROID-N2, aarch64, 3.7 GB): that build took 7m07s and, on a host already
+  # sitting at 416 MB available with swap 100% consumed, thrashed hard enough to
+  # freeze the UI and knock over whisper, piper and signal_messenger.
+  "uvicorn>=0.32.0",
   "httpx>=0.27.0",
   "pydantic>=2.8.0",
   "pydantic-settings>=2.4.0",

@@ -2,7 +2,7 @@
 # Install via public add-on repo:
 #   https://github.com/colinmcintosh/ha-realtime-voice-addons
 name: "HA Realtime Voice CP"
-version: "0.3.0"
+version: "0.4.0"
 slug: ha_realtime_voice_cp
 description: "Mints short-lived xAI realtime tokens and bootstraps Voice PE sessions. Links HA via OAuth (no long-lived token paste). Does not proxy audio."
 url: "https://github.com/colinmcintosh/ha-realtime-voice"
@@ -10,6 +10,17 @@ arch:
   - aarch64
   - amd64
   - armv7
+# Prebuilt images, so Supervisor PULLS instead of running a docker build on the
+# user's Home Assistant host. Supervisor substitutes {arch} and appends the
+# `version:` below as the tag, so the two must move together — build the images
+# first, then publish. scripts/publish-addon-repo.sh refuses to publish this key
+# while any arch is unpullable, because an image that does not exist makes the
+# add-on uninstallable rather than merely slow (there is no build to fall back
+# to). Built by .github/workflows/addon-build.yml in the monorepo.
+#
+# Measured cause: a from-source build took 7m07s on HA Blue and, with the host
+# already at 416 MB available and swap exhausted, froze the UI for ten minutes.
+image: "ghcr.io/colinmcintosh/ha-realtime-voice-cp-{arch}"
 init: false
 startup: application
 boot: auto
